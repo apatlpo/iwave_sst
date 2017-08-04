@@ -30,3 +30,6 @@ __pycache__/
 
 # jupyter
 .ipynb*
+
+# logins
+*.login
