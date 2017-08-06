@@ -52,21 +52,37 @@ conda --version
 conda update conda
 ```
 Create new environment myenv
-```conda create --name myenv python```
+```
+conda create --name myenv python
+```
 Switch to another environment (activate/deactivate) (or source_activate in csh)
-```source activate myenv ```
+```
+source activate myenv
+```
 To change your path from the current environment back to the root (or source_deactivate in csh)
-```source deactivate```
+```
+source deactivate
+```
 List all environments
-```conda info --envs```
+```
+conda info --envs
+```
 Delete an environment
-```conda remove --name myenv --all```
+```
+conda remove --name myenv --all
+```
 View a list of packages and versions installed in an environmentSearch for a package
-```conda list```
+```
+conda list
+```
 Check to see if a package is available for conda to install
-```conda search packagename```
+```
+conda search packagename
+```
 Install a new package
-```conda install packagename```
+```
+conda install packagename
+```
 Remove conda
 ```
 rm -rf /home/mulroy/slgentil/miniconda2 
