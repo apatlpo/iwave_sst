@@ -1,0 +1,26 @@
+#!/bin/csh
+# Configure these values to change the size of your dask cluster
+#PBS -q mpi_8
+#PBS -l walltime=24:00:00
+
+# for infos about the queue: qstat -Qf mpi_2
+
+# go into directory where job was launched
+cd $PBS_O_WORKDIR
+
+cat $PBS_NODEFILE | uniq >  "$PBS_JOBID.nodefile"
+time $MPI_LAUNCH  dask_init $PBS_JOBID 
+
+# Run jupyter notebook
+# cat *.nodefile
+#
+# ssh -L 9999:localhost:9999  datarmor1-10g
+# ssh -L 9999:localhost:8886 r1i0n0.ib0.ice.ifremer.fr
+# set path = ($HOME/.miniconda2/envs/daskdist/bin $path)
+# jupyter notebook --no-browser --port=8886
+#
+# ps -ax | grep localhost
+#
+# ps -aux | grep aponte
+# netstat -lntu | grep 99
+
