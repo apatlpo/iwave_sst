@@ -32,7 +32,8 @@ from datetime import datetime, timedelta
 
 
 # data path
-dpath = '/home1/scratch/aponte/hw/mask/';
+dpath = '/home1/scratch/aponte/hw/mask/'
+figdir = '/home1/datawork/aponte/hw/figs/'
 
 filenames = sorted(glob(dpath+'*.nc'))
 print 'Number of files available: %d' %len(filenames)
@@ -128,7 +129,7 @@ def plot_mask(mask, colorbar=False, title=None):
 
 # plot
 plot_mask(fmask)
-plt.savefig('figs/hw_snapshot.png')
+plt.savefig(figdir+'hw_snapshot.png')
 
 
 # In[5]:
@@ -196,21 +197,12 @@ print cmask
 #
 plot_mask(cmask['QA'],colorbar=True)
 
-#plt.figure(figsize=(10,10))
-#plt.imshow(H)
-#cmask['QA'].plot()
-#plt.show()
 
 
 # In[6]:
 
 
-# loop over time and store
-threshold=.8
-Tmin=.5 # in days
-
-#M = cmask['QA'].copy(deep=True).where(cmask['QA']<0) # filled with NaN
-tagg = xr.zeros_like(cmask['QA'])
+# loop over time and plot
 
 # reference time
 t0 = datetime(2015,7,1,0,0,0)
@@ -221,63 +213,10 @@ def write_log(slog):
     flog.close()
     return
 
-#
-class swin():
-    def __init__(self):
-        self.open = np.empty((0,4))
-        self.closed = np.empty((0,4))
-    def update(self,lon,lat,delt,time):
-        if len(lon)>0:
-            #print 'len(lon)>0'
-            for llon, llat, ldelt in zip(lon,lat,delt):
-                # test if open is empty
-                #if len(self.open)>0:
-                if self.open.shape[0]>1:
-                    # open has 2 elements at least
-                    #print 'self.open.shape[0]>1'
-                    # test if window is already open
-                    ij = np.where( (self.open[:,0]==llon) & (self.open[:,1]==llat) )
-                    if len(ij[0])==0:
-                        # items needs to be added to open list
-                        self.open = np.concatenate((self.open,np.array([llon,llat,ldelt,time],ndmin=2)),axis=0)
-                    else:
-                        # items needs to be updated
-                        self.open[ij[0],:] = np.array([llon,llat,ldelt,time])
-                elif self.open.shape[0]==1:
-                    # open has 1 element
-                    #print 'self.open.shape[0]==1'                    
-                    if (self.open[0,0]==llon) & (self.open[0,1]==llat):
-                        # items needs to be updated
-                        self.open[0,:] = np.array([llon,llat,ldelt,time])
-                    else:
-                        # items needs to be added to open list
-                        self.open = np.concatenate((self.open,np.array([llon,llat,ldelt,time],ndmin=2)),axis=0)
-                else:
-                    #print 'self.open.shape[0]==0'
-                    # open has 0 elements
-                    self.open = np.array([llon,llat,ldelt,time],ndmin=2)
-        # need to move inactive windows to closed
-        if len(self.open)>0:
-            #print 'len(self.open)>0'
-            flog = open('hw_mask.log','a')
-            for i in xrange(self.open[:,0].size):
-                # search for matches in lon/lat
-                ij = np.where( (lon==self.open[i,0]) & (lat==self.open[i,1]) )
-                if len(ij[0])==0:
-                    # the window needs to be closed
-                    #self.closed = np.append(self.closed,self.open[i,:],axis=0)
-                    self.closed = np.concatenate((self.closed,self.open[[i],:]),axis=0)
-                    #self.open[ij[0],:] =[]
-                    self.open = np.delete(self.open,(ij[0]),axis=0)
-                    flog.write('Stores: %.2f, %.2f, %.2f, %s \n'  %(self.open[i,0],self.open[i,1],self.open[i,2], str(t0+timedelta(seconds=self.open[i,3])) ) )
-            flog.close()
 
-# init data holder
-s = swin()
-
+#for i,f in enumerate(filenames):
 #for i,f in zip(range(0,48*2,12),filenames[:48*2]):
-#for i,f in enumerate(filenames[:48]):
-for i,f in enumerate(filenames):
+for i,f in enumerate(filenames[:2*24*10]):
     log = str(time[i])
     # load data
     mask = xr.open_dataset(f)['QA']
@@ -286,28 +225,15 @@ for i,f in enumerate(filenames):
     # coarsen
     cmask = coarsen(fmask)
     # decimate
-    mask = xr.ones_like(cmask['QA'])
-    mask = mask.where(cmask['QA']>threshold) # keep only values above the threshold
-    #if i>24:
-    #    mask = mask.where(cmask['QA']>2.) # keep only values above the threshold
-    mask = mask.fillna(0.)
+    #mask = xr.ones_like(cmask['QA'])
+    #mask = mask.where(cmask['QA']>threshold) # keep only values above the threshold
+    #mask = mask.fillna(0.)
     #
-    if i>0:
-        delt = (time[i]-time[im1]).total_seconds()/86400.
-        if delt>0.25:
-            mask[:]=0.
-        tagg += delt
-        tagg *= mask
-        # store large values of tagg
-        ij = np.where(tagg.values>=Tmin)
-        if len(ij[0])>0:
-            s.update(tagg['longitude'].values[ij[0]], tagg['latitude'].values[ij[1]],                      tagg.values[ij], (time[i]-t0).total_seconds())
+    plot_mask(cmask['QA'],colorbar=True,title=log)
+    plt.savefig(figdir+'hw_mask_%04d.jpg'%i,dpi=300)
     #
-    im1=i
-    log += '  open: %d    closed: %d' %(s.open.shape[0],s.closed.shape[0])
-    #print log
     write_log(log)
 
-
+# os.system('ffmpeg -y -r 2 -i /home1/datawork/aponte/hw/figs/hw_mask_%04d.jpg hw_mask.mp4')
 
 

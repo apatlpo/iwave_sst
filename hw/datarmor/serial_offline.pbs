@@ -1,5 +1,5 @@
 #!/bin/csh
-#PBS -l mem=10g
+#PBS -l mem=20g
 #PBS -l walltime=24:00:00
 #  COMMENT
 #  Tina ODAKA 28.02.2017
@@ -27,8 +27,13 @@ date
 #sleep 2h
 ## or run script
 set path = ($HOME/.miniconda2/envs/daskdist/bin $path)
-cp /home1/datahome/aponte/iwave_sst/hw/hw_cloudmask_agglo.py .
-python hw_cloudmask_agglo.py  >&  "$PBS_JOBID-python.out"
+set pydir = "/home1/datahome/aponte/iwave_sst/hw/"
+set pyscript = "hw_cloudmask_agglo.py"
+set pyscript = "hw_cloudmask_movie.py"
+cp $pydir$pyscript  .
+#cp /home1/datahome/aponte/iwave_sst/hw/hw_cloudmask_agglo.py .
+#python hw_cloudmask_agglo.py  >&  "$PBS_JOBID-python.out"
+python $pyscript  >&  "$PBS_JOBID-python.out"
 date
 
 
