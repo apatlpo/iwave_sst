@@ -33,6 +33,12 @@ from datetime import datetime, timedelta
 
 # data path
 dpath = '/home1/scratch/aponte/hw/mask/';
+figdir = 'figs/'
+#figdir = '/home1/datawork/aponte/hw/figs/'
+try:
+    os.stat(figdir)
+except:
+    os.mkdir(figdir)
 
 filenames = sorted(glob(dpath+'*.nc'))
 print 'Number of files available: %d' %len(filenames)
@@ -112,10 +118,10 @@ fmask = process_mask(mask)
 # (unzip, rename)
 # mv 110m_coastline.* ~/.local/share/cartopy/shapefiles/natural_earth/physical/
 
-def plot_mask(mask, colorbar=False, title=None):
+def plot_mask(mask, colorbar=False, title=None, vmin=0., vmax=1.):
     plt.figure(figsize=(10,10))
     ax = plt.axes(projection=ccrs.Geostationary(central_longitude=140.0));    
-    mask.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(),
+    mask.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
                          x='longitude', y='latitude', add_colorbar=colorbar);
     ax.coastlines(color='w')
     if title is None:
@@ -128,7 +134,7 @@ def plot_mask(mask, colorbar=False, title=None):
 
 # plot
 plot_mask(fmask)
-plt.savefig('figs/hw_snapshot.png')
+plt.savefig(figdir+'hw_snapshot.png')
 
 
 # In[5]:
@@ -137,7 +143,7 @@ plt.savefig('figs/hw_snapshot.png')
 # with dask
 
 # 2D bins
-dl = 0.5
+dl = 1.
 #mask['longitude'].max().values
 lon_bins = np.arange(fmask['longitude'].min().values, fmask['longitude'].max().values, dl)
 lat_bins = np.arange(fmask['latitude'].min().values, fmask['latitude'].max().values, dl)
@@ -196,25 +202,22 @@ print cmask
 #
 plot_mask(cmask['QA'],colorbar=True)
 
-#plt.figure(figsize=(10,10))
-#plt.imshow(H)
-#cmask['QA'].plot()
-#plt.show()
 
 
-# In[6]:
+# In[8]:
 
 
 # loop over time and store
 threshold=.8
-Tmin=.5 # in days
+Tmin=.125 # in days
 
-#M = cmask['QA'].copy(deep=True).where(cmask['QA']<0) # filled with NaN
+# xarray aggregating time intervals
 tagg = xr.zeros_like(cmask['QA'])
 
 # reference time
 t0 = datetime(2015,7,1,0,0,0)
 
+#
 def write_log(slog):
     flog = open('hw_mask.log','a')
     flog.write(slog+'\n')
@@ -222,19 +225,16 @@ def write_log(slog):
     return
 
 #
-class swin():
+class twindow_manager():
     def __init__(self):
         self.open = np.empty((0,4))
         self.closed = np.empty((0,4))
     def update(self,lon,lat,delt,time):
         if len(lon)>0:
-            #print 'len(lon)>0'
             for llon, llat, ldelt in zip(lon,lat,delt):
                 # test if open is empty
-                #if len(self.open)>0:
                 if self.open.shape[0]>1:
                     # open has 2 elements at least
-                    #print 'self.open.shape[0]>1'
                     # test if window is already open
                     ij = np.where( (self.open[:,0]==llon) & (self.open[:,1]==llat) )
                     if len(ij[0])==0:
@@ -245,7 +245,6 @@ class swin():
                         self.open[ij[0],:] = np.array([llon,llat,ldelt,time])
                 elif self.open.shape[0]==1:
                     # open has 1 element
-                    #print 'self.open.shape[0]==1'                    
                     if (self.open[0,0]==llon) & (self.open[0,1]==llat):
                         # items needs to be updated
                         self.open[0,:] = np.array([llon,llat,ldelt,time])
@@ -253,31 +252,28 @@ class swin():
                         # items needs to be added to open list
                         self.open = np.concatenate((self.open,np.array([llon,llat,ldelt,time],ndmin=2)),axis=0)
                 else:
-                    #print 'self.open.shape[0]==0'
                     # open has 0 elements
                     self.open = np.array([llon,llat,ldelt,time],ndmin=2)
         # need to move inactive windows to closed
-        if len(self.open)>0:
-            #print 'len(self.open)>0'
-            flog = open('hw_mask.log','a')
+        if self.open.shape[0]>0:
+            idel=[]
             for i in xrange(self.open[:,0].size):
                 # search for matches in lon/lat
                 ij = np.where( (lon==self.open[i,0]) & (lat==self.open[i,1]) )
                 if len(ij[0])==0:
                     # the window needs to be closed
-                    #self.closed = np.append(self.closed,self.open[i,:],axis=0)
-                    self.closed = np.concatenate((self.closed,self.open[[i],:]),axis=0)
-                    #self.open[ij[0],:] =[]
-                    self.open = np.delete(self.open,(ij[0]),axis=0)
-                    flog.write('Stores: %.2f, %.2f, %.2f, %s \n'  %(self.open[i,0],self.open[i,1],self.open[i,2], str(t0+timedelta(seconds=self.open[i,3])) ) )
-            flog.close()
+                    idel.append(i)
+                    write_log('Stores: %.2f, %.2f, %.2f, %s ' \
+                            %(self.open[i,0],self.open[i,1],self.open[i,2], \
+                              str(t0+timedelta(seconds=self.open[i,3])) ) )
+            self.open = np.delete(self.open,idel,axis=0)
 
 # init data holder
-s = swin()
+s = twindow_manager()
 
-#for i,f in zip(range(0,48*2,12),filenames[:48*2]):
-#for i,f in enumerate(filenames[:48]):
-for i,f in enumerate(filenames):
+# put everything in a function to see if it solves the memory issue
+def process(i,f):
+    global tagg, im1
     log = str(time[i])
     # load data
     mask = xr.open_dataset(f)['QA']
@@ -288,25 +284,33 @@ for i,f in enumerate(filenames):
     # decimate
     mask = xr.ones_like(cmask['QA'])
     mask = mask.where(cmask['QA']>threshold) # keep only values above the threshold
-    #if i>24:
-    #    mask = mask.where(cmask['QA']>2.) # keep only values above the threshold
     mask = mask.fillna(0.)
     #
     if i>0:
         delt = (time[i]-time[im1]).total_seconds()/86400.
         if delt>0.25:
+            # reset mask to 0 if time inverval between files exceeds 6h
             mask[:]=0.
         tagg += delt
         tagg *= mask
+        tagg.compute()
         # store large values of tagg
         ij = np.where(tagg.values>=Tmin)
-        if len(ij[0])>0:
-            s.update(tagg['longitude'].values[ij[0]], tagg['latitude'].values[ij[1]],                      tagg.values[ij], (time[i]-t0).total_seconds())
+        s.update(tagg['longitude'].values[ij[0]], tagg['latitude'].values[ij[1]], \
+                 tagg.values[ij], (time[i]-t0).total_seconds())
     #
     im1=i
     log += '  open: %d    closed: %d' %(s.open.shape[0],s.closed.shape[0])
-    #print log
+    #print '  open: %d    closed: %d' %(s.open.shape[0],s.closed.shape[0])
     write_log(log)
+
+    
+write_log('dl=%.2f deg, threshold=%.2f, Tmin=%.1f h'%(dl, threshold,Tmin*24.))
+#for i,f in zip(range(0,48),filenames[:48]):
+#for i,f in enumerate(filenames[:48]):
+for i,f in enumerate(filenames):
+    process(i,f)
+    print i
 
 
 
