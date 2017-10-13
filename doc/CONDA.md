@@ -8,15 +8,12 @@ bash
 conda update conda
 conda create --name sst python
 source activate sst
-conda install dask distributed -c conda-forge
-conda install graphviz -c conda-forge
 conda install xarray -c conda-forge
-conda install h5py -c conda-forge
-conda install netcdf4 -c conda-forge
-conda install jupyter -c conda-forge
 conda install cartopy -c conda-forge
+conda install jupyter -c conda-forge
 ```
 
+We are stopping install of graphviz for now.
 
 
 # Miniconda in general:
