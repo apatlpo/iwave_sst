@@ -11,6 +11,7 @@ source activate sst
 conda install xarray -c conda-forge
 conda install cartopy -c conda-forge
 conda install jupyter -c conda-forge
+conda install mpi4py -c conda-forge
 ```
 
 We are stopping install of graphviz for now.
