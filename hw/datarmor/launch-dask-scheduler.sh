@@ -1,22 +1,22 @@
-#!/bin/bash
+#!/bin/csh
+# Configure these values to change the size of your dask cluster
 #PBS -N dask-scheduler
-#PBS -q economy
-#PBS -A UCLB0022
-#PBS -l select=1:ncpus=36:mpiprocs=6:ompthreads=6
-#PBS -l walltime=11:59:00
-#PBS -j oe
-#PBS -m abe
+#PBS -q mpi_8
+#PBS -l walltime=24:00:00
 
-# Writes ~/scheduler.json file in home directory
-# Connect with
-# >>> from dask.distributed import Client
-# >>> client = Client(scheduler_file='~/scheduler.json')
+# for infos about the queue: qstat -Qf mpi_8
 
-# Setup Environment
-module purge
-source activate pangeo
+# get the path right
+setenv PATH ${HOME}/.miniconda2/envs/sst/bin:${PATH}
+setenv OMP_NUM_THREADS 1
 
-SCHEDULER=/glade/scratch/$USER/scheduler.json
+# go into directory where job was launched
+cd $PBS_O_WORKDIR
+
+cat $PBS_NODEFILE | uniq >  "$PBS_JOBID.scheduler.nodefile"
+setenv SCHEDULER ${HOME}/scheduler.json
 rm -f $SCHEDULER
-mpirun --np 6 dask-mpi --nthreads 6 --memory-limit 22e9 --interface ib0 \
-    --local-directory /glade/scratch/$USER --scheduler-file=$SCHEDULER
+
+time mpirun -np 8  dask-mpi --nthreads 14 --memory-limit 22e9 --interface ib0 \
+    --local-directory $TMPDIR --scheduler-file=$SCHEDULER
+

@@ -24,9 +24,11 @@ while true; do
     sleep 1 
 done
 
-default=/glade/p/work/$USER
+#default=/glade/p/work/$USER
+default=$HOME
 notebook=${2:-$default}
 echo "Setting up Jupyter Lab, Notebook dir: ${notebook}"
-source activate pangeo
+export PATH="$HOME/.miniconda2/envs/petsc/bin:$PATH"
+#source activate sst 
 ./setup-jlab.py --log_level=DEBUG --jlab_port=8877 --dash_port=8878 \
     --notebook_dir $notebook --scheduler_file $WORKDIR/scheduler.json
