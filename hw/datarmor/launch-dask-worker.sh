@@ -6,6 +6,8 @@
 
 # for infos about the queue: qstat -Qf mpi_8
 
+Update this file by following dask.sh
+
 # get the path right 
 setenv PATH ${HOME}/.miniconda2/envs/sst/bin:${PATH}
 setenv OMP_NUM_THREADS 1
