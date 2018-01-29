@@ -33,3 +33,9 @@ __pycache__/
 
 # logins
 *.login
+
+# dask files
+dask-worker*
+dask-scheduler*
+
+
