@@ -83,21 +83,21 @@ def download_hw(times):
             for fname in files:
                 #
                 filedat = dpath+fname_pref
-                print fname
+                print(fname)
                 maskfiles.append(filedat)
                 #
                 if not os.path.isfile(filedat):
-                    print 'No cloud mask file found, download from jaxa ftp: '+fname
+                    print('No cloud mask file found, download from jaxa ftp: '+fname)
                     lfile = open(dpath+fname,'wb')
                     try:
                         ftp.retrbinary('RETR %s' % fname, lfile.write)
                     except:
-                        print "Error"
+                        print('Error')
                     lfile.close()
                 else:
-                    print filedat+' is already on disk'
+                    print(filedat+' is already on disk')
         except:
-            print 'Cannot access data in '+fdir 
+            print('Cannot access data in '+fdir)
             
             
     ftp.quit()
@@ -125,15 +125,14 @@ def ftp_login():
 if __name__ == "__main__":
 
     # output dir
-    dpath = '/home/slyne/aponte/sst_fast/data_bin/';
-    dpath = '/home1/scratch/aponte/hw/mask/';
+    #dpath = '/home/slyne/aponte/sst_fast/data_bin/';
+    #dpath = '/home1/scratch/aponte/hw/mask/';
+    dpath = '/home/datawork-lops-osi/data/hw/mask/';
 
     # time line
     # 201603 ->201706
     t1=datetime.datetime(2016,3,1,0,0,0);
-    t1=datetime.datetime(2016,7,1,0,0,0);
-    t1=datetime.datetime(2016,12,17,4,0,0);
-    t1=datetime.datetime(2017,7,18,0,0,0);
+    t1=datetime.datetime(2017,8,4,15,0,0);
     delt = 30.; # in days
     dt=30 # in minutes
     #
@@ -146,11 +145,11 @@ if __name__ == "__main__":
     while t<=t2:
         t += datetime.timedelta(minutes=dt)
         time.append(t)
-    print time[0]
-    print time[-1]
+    print(time[0])
+    print(time[-1])
     
     maskfiles = download_hw(time)
     
-    print '---\n All files downloaded \n---'
+    print('---\n All files downloaded \n---')
 
     sys.exit()
