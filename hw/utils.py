@@ -4,8 +4,8 @@
 import numpy as np
 import xarray as xr
 import dask.array as da
-import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
 
 
 #------------------------------ MASK ---------------------------------------
@@ -13,7 +13,24 @@ import matplotlib.pyplot as plt
 rint = xr.ufuncs.rint
 fmod = xr.ufuncs.fmod
 
-def process_mask(mask):
+def open_process_coarsen(f,dl):
+    chunks=()
+    # open file
+    mask = xr.open_dataset(f)['QA']
+    # massage the mask to get cloud flag
+    fmask = process_raw_mask(mask)
+    # coarsen fields
+    #cmask = coarsen(fmask, dl, chunks)
+    #
+    #plot_mask(cmask['QA'], colorbar=False, title=str(time), savefig=figname) # crashes with colorbar=True
+    #
+    m = float(fmask.mean().values)
+    #m = float(cmask['QA'].mean().values)
+    #
+    mask.close()
+    return m
+
+def process_raw_mask(mask):
     #QA:description = "
     #(2,1,0) Cloud Retrieval Algorithm Flag: 000=Outside of Scan, 001=No Cloud Mask,
     #        010=Clear, 011=Failed, 100=Successful: Low Confidence, 101=Successful: High Confidence, 110=TBD, 111=TBD; 
@@ -57,19 +74,24 @@ def process_mask(mask):
     return fmask
 
 #
-def plot_mask(mask, colorbar=False, title=None, vmin=0., vmax=1.):
-    plt.figure(figsize=(10,10))
+def plot_mask(mask, colorbar=False, title=None, vmin=0., vmax=1., savefig=None):
+    plt.switch_backend('agg')
+    fig = plt.figure(figsize=(10,10))
     ax = plt.axes(projection=ccrs.Geostationary(central_longitude=140.0));    
     mask.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
                          x='longitude', y='latitude', add_colorbar=colorbar);
     ax.coastlines(color='w')
+    #
     if title is None:
         ax.set_title('HW cloud mask')
     else:
         ax.set_title(title)
-    plt.show()
+    #
+    if savefig is not None:
+        plt.savefig(savefig, dpi=300)
+        plt.close(fig)
 
-
+#
 def coarsen(fmask, dl, chunks=()):
     
     lon_bins = np.arange(fmask['longitude'].min().values, fmask['longitude'].max().values, dl)
@@ -174,7 +196,7 @@ class twindow_manager():
 
 
 # put everything in a function to see if it solves the memory issue
-def process(i,f):
+def process_mask_time(i,f):
     global tagg, im1, time
     log = str(time[i])
     # load data
@@ -203,7 +225,7 @@ def process(i,f):
     #
     im1=i
     log += '  open: %d    closed: %d' %(s.open.shape[0],s.closed.shape[0])
-    print '  open: %d    closed: %d' %(s.open.shape[0],s.closed.shape[0])
+    print('  open: %d    closed: %d' %(s.open.shape[0],s.closed.shape[0]))
     write_log(log)
 
 
