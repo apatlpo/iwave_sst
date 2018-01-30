@@ -6,6 +6,8 @@ import xarray as xr
 import dask.array as da
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
+#import os
+#from datetime import datetime
 
 
 #------------------------------ MASK ---------------------------------------
@@ -77,7 +79,8 @@ def process_raw_mask(mask):
 def plot_mask(mask, colorbar=False, title=None, vmin=0., vmax=1., savefig=None):
     plt.switch_backend('agg')
     fig = plt.figure(figsize=(10,10))
-    ax = plt.axes(projection=ccrs.Geostationary(central_longitude=140.0));    
+    #ax = plt.axes(projection=ccrs.Geostationary(central_longitude=140.0)) # may cause crash when distributed
+    ax = fig.add_subplot(111, projection=ccrs.Geostationary(central_longitude=140.0))
     mask.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
                          x='longitude', y='latitude', add_colorbar=colorbar);
     ax.coastlines(color='w')
