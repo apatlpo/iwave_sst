@@ -24,6 +24,7 @@ __pycache__/
 *.jpg
 *.pdf
 *.mp4
+*figs/
 
 # openoffice
 *.odp#
@@ -37,5 +38,4 @@ __pycache__/
 # dask files
 dask-worker*
 dask-scheduler*
-
 

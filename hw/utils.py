@@ -76,8 +76,9 @@ def process_raw_mask(mask):
     return fmask
 
 #
-def plot_mask(mask, colorbar=False, title=None, vmin=0., vmax=1., savefig=None):
-    plt.switch_backend('agg')
+def plot_mask(mask, colorbar=False, title=None, vmin=0., vmax=1., savefig=None, offline=False):
+    if offline:
+        plt.switch_backend('agg')
     fig = plt.figure(figsize=(10,10))
     #ax = plt.axes(projection=ccrs.Geostationary(central_longitude=140.0)) # may cause crash when distributed
     ax = fig.add_subplot(111, projection=ccrs.Geostationary(central_longitude=140.0))
@@ -91,8 +92,11 @@ def plot_mask(mask, colorbar=False, title=None, vmin=0., vmax=1., savefig=None):
         ax.set_title(title)
     #
     if savefig is not None:
-        plt.savefig(savefig, dpi=300)
+        fig.savefig(savefig, dpi=300)
         plt.close(fig)
+    #
+    if not offline:
+        plt.show()
 
 #
 def coarsen(fmask, dl, chunks=()):
