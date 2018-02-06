@@ -250,4 +250,25 @@ def process_mask_time(i, t, f, tagg, chunks, s):
 
 #------------------------------ SST ---------------------------------------
 
- 
+#
+def plot_sst(sst, colorbar=False, title=None, vmin=10., vmax=25., savefig=None, offline=False):
+    if offline:
+        plt.switch_backend('agg')
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot(111, projection=ccrs.Geostationary(central_longitude=sst['lon'].mean()))
+    sst.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
+                         x='longitude', y='latitude', add_colorbar=colorbar);
+    ax.coastlines(color='w')
+    #
+    if title is None:
+        ax.set_title('HW sst')
+    else:
+        ax.set_title(title)
+    #
+    if savefig is not None:
+        fig.savefig(savefig, dpi=300)
+        plt.close(fig)
+    #
+    if not offline:
+        plt.show()
+
