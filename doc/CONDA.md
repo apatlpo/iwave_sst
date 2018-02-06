@@ -14,22 +14,6 @@ conda install jupyter -c conda-forge
 pip install cmocean
 ```
 
-# Install useful libraries for this project:
-
-
-Download Miniconda3 from the [conda website](https://conda.io/miniconda.html)
-```
-bash Miniconda3-latest-MacOSX-x86_64.sh
-(specify .miniconda3 and not miniconda3 as target dir for conda)
-bash
-conda update conda
-conda create --name petsc python
-source activate petsc
-conda install -c conda-forge petsc4py
-conda install -c conda-forge netcdf4
-conda install -c conda-forge matplotlib
-conda install -c conda-forge snakeviz
-```
 # Miniconda in general:
 
 ## Overview
