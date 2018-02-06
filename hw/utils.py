@@ -6,6 +6,8 @@ import xarray as xr
 import dask.array as da
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
+from cmocean import cm
+import time
 #import os
 #from datetime import datetime
 
@@ -234,14 +236,17 @@ def process_mask_time(i, t, f, tagg, chunks, s):
 #------------------------------ SST ---------------------------------------
 
 #
-def plot_sst(sst, colorbar=False, title=None, vmin=10., vmax=25., savefig=None, offline=False):
+def plot_sst(sst, colorbar=False, title=None, vmin=10., vmax=35., savefig=None, offline=False):
     if offline:
         plt.switch_backend('agg')
     fig = plt.figure(figsize=(10,10))
-    ax = fig.add_subplot(111, projection=ccrs.Geostationary(central_longitude=sst['lon'].mean()))
-    sst.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
-                         x='longitude', y='latitude', add_colorbar=colorbar);
-    ax.coastlines(color='w')
+    ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
+    im = sst.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
+                        x='lon', y='lat', add_colorbar=colorbar, cmap=cm.thermal)
+    fig.colorbar(im)
+    gl=ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=2, color='k', alpha=0.5, linestyle='--')
+    gl.xlabels_top=False
+    ax.coastlines(color='k')
     #
     if title is None:
         ax.set_title('HW sst')
@@ -249,7 +254,8 @@ def plot_sst(sst, colorbar=False, title=None, vmin=10., vmax=25., savefig=None, 
         ax.set_title(title)
     #
     if savefig is not None:
-        fig.savefig(savefig, dpi=300)
+        fig.savefig(savefig, dpi=150)
+        time.sleep(.1)
         plt.close(fig)
     #
     if not offline:

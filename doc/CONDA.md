@@ -1,22 +1,35 @@
 # Install useful libraries for this project:
 
 
-Download Miniconda2 from the [conda website](https://conda.io/miniconda.html)
+Download Miniconda3 from the [conda website](https://conda.io/miniconda.html)
 ```
-bash Miniconda2-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
 bash
 conda update conda
-conda create --name sst python
-source activate sst
+conda create --name iwsst python
+source activate iwsst
 conda install xarray -c conda-forge
 conda install cartopy -c conda-forge
 conda install jupyter -c conda-forge
-conda install mpi4py -c conda-forge
+pip install cmocean
 ```
 
-We are stopping install of graphviz for now.
+# Install useful libraries for this project:
 
 
+Download Miniconda3 from the [conda website](https://conda.io/miniconda.html)
+```
+bash Miniconda3-latest-MacOSX-x86_64.sh
+(specify .miniconda3 and not miniconda3 as target dir for conda)
+bash
+conda update conda
+conda create --name petsc python
+source activate petsc
+conda install -c conda-forge petsc4py
+conda install -c conda-forge netcdf4
+conda install -c conda-forge matplotlib
+conda install -c conda-forge snakeviz
+```
 # Miniconda in general:
 
 ## Overview
@@ -28,8 +41,8 @@ The other difference is that the Python 3 version of Miniconda will default to P
 Miniconda
 Installation
 
-After downloading Miniconda2-latest-Linux-x86_64.sh
-bash Miniconda2-latest-Linux-x86_64.sh
+After downloading Miniconda3-latest-Linux-x86_64.sh or Miniconda3-latest-MacOSX-x86_64.sh
+bash Miniconda3-latest-MacOSX-x86_64.sh
 
 Miniconda must be used with bash. If you want to use it with csh, add in your .cshrc (pas terrible!!!)
 ```
@@ -38,8 +51,8 @@ Miniconda must be used with bash. If you want to use it with csh, add in your .c
 # alias Miniconda
 #----------------------------------------------------------------
 #
-setenv PATH ${PATH}: /home/mulroy/slgentil/miniconda2/bin
-alias source_activate 'setenv OLDPATH ${PATH};setenv PATH /home/mulroy/slgentil/miniconda2/envs/\!*/bin:${PATH}'
+setenv PATH ${PATH}: /home/mulroy/slgentil/miniconda3/bin
+alias source_activate 'setenv OLDPATH ${PATH};setenv PATH /home/mulroy/slgentil/miniconda3/envs/\!*/bin:${PATH}'
 alias source_deactivate 'setenv PATH $OLDPATH'
 ```
 
@@ -83,7 +96,7 @@ conda install packagename
 ```
 Remove conda
 ```
-rm -rf /home/mulroy/slgentil/miniconda2 
+rm -rf /home/mulroy/slgentil/miniconda3 
 ```
 
 ## Install a package from Anaconda.org
@@ -109,5 +122,3 @@ Exporting environment
 conda env export > environment.yml on a machine
 conda env create -f environment.yml -n $ENV_NAME on the new machine
 ```
-
-
