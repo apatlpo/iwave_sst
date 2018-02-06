@@ -15,23 +15,6 @@ import cartopy.crs as ccrs
 rint = xr.ufuncs.rint
 fmod = xr.ufuncs.fmod
 
-def open_process_coarsen(f,dl):
-    chunks=()
-    # open file
-    mask = xr.open_dataset(f)['QA']
-    # massage the mask to get cloud flag
-    fmask = process_raw_mask(mask)
-    # coarsen fields
-    #cmask = coarsen(fmask, dl, chunks)
-    #
-    #plot_mask(cmask['QA'], colorbar=False, title=str(time), savefig=figname) # crashes with colorbar=True
-    #
-    m = float(fmask.mean().values)
-    #m = float(cmask['QA'].mean().values)
-    #
-    mask.close()
-    return m
-
 def process_raw_mask(mask):
     #QA:description = "
     #(2,1,0) Cloud Retrieval Algorithm Flag: 000=Outside of Scan, 001=No Cloud Mask,
