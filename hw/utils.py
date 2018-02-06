@@ -134,17 +134,27 @@ def coarsen(fmask, dl, chunks=()):
 
 
 #
-def write_log(slog):
-    flog = open('hw_mask.log','a')
+def write_log(slog, clobber=False):
+    if clobber:
+        flog = open('hw_mask.log','w')
+    else:
+        flog = open('hw_mask.log','a')            
     flog.write(slog+'\n')
     flog.close()
     return
 
 #
 class twindow_manager():
-    def __init__(self):
+    def __init__(self,threshold,Tmin,dl,t0):
         self.open = np.empty((0,4))
         self.closed = np.empty((0,4))
+        # store other useful variables
+        self.threshold = threshold
+        self.Tmin = Tmin
+        self.dl = dl
+        self.t0 = t0
+        #
+        write_log('dl=%.2f deg, threshold=%.2f, Tmin=%.1f h'%(self.dl, self.threshold,self.Tmin*24.), clobber=True)
     def update(self,lon,lat,delt,time):
         if len(lon)>0:
             for llon, llat, ldelt in zip(lon,lat,delt):
@@ -186,22 +196,21 @@ class twindow_manager():
 
 
 # put everything in a function to see if it solves the memory issue
-def process_mask_time(i,f):
-    global tagg, im1, time
-    log = str(time[i])
+def process_mask_time(i, t, f, tagg, chunks, s):
+    log = str(t)
     # load data
     mask = xr.open_dataset(f)['QA']
     # process
-    fmask = process_mask(mask)
+    fmask = process_raw_mask(mask)
     # coarsen
-    cmask = coarsen(fmask)
+    cmask = coarsen(fmask, s.dl, chunks)
     # decimate
     mask = xr.ones_like(cmask['QA'])
-    mask = mask.where(cmask['QA']>threshold) # keep only values above the threshold
+    mask = mask.where(cmask['QA']>s.threshold) # keep only values above the threshold
     mask = mask.fillna(0.)
     #
     if i>0:
-        delt = (time[i]-time[im1]).total_seconds()/86400.
+        delt = (t-s.tm1).total_seconds()/86400.
         if delt>0.25:
             # reset mask to 0 if time inverval between files exceeds 6h
             mask[:]=0.
@@ -209,16 +218,40 @@ def process_mask_time(i,f):
         tagg *= mask
         tagg.compute()
         # store large values of tagg
-        ij = np.where(tagg.values>=Tmin)
+        ij = np.where(tagg.values>=s.Tmin)
         s.update(tagg['longitude'].values[ij[0]], tagg['latitude'].values[ij[1]], \
-                 tagg.values[ij], (time[i]-t0).total_seconds())
+                 tagg.values[ij], (t-s.t0).total_seconds())
     #
-    im1=i
+    #im1=i
+    #s.im1 = i
+    s.tm1 = t
     log += '  open: %d    closed: %d' %(s.open.shape[0],s.closed.shape[0])
     print('  open: %d    closed: %d' %(s.open.shape[0],s.closed.shape[0]))
     write_log(log)
+    return tagg
 
 
 #------------------------------ SST ---------------------------------------
 
- 
+#
+def plot_sst(sst, colorbar=False, title=None, vmin=10., vmax=25., savefig=None, offline=False):
+    if offline:
+        plt.switch_backend('agg')
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot(111, projection=ccrs.Geostationary(central_longitude=sst['lon'].mean()))
+    sst.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
+                         x='longitude', y='latitude', add_colorbar=colorbar);
+    ax.coastlines(color='w')
+    #
+    if title is None:
+        ax.set_title('HW sst')
+    else:
+        ax.set_title(title)
+    #
+    if savefig is not None:
+        fig.savefig(savefig, dpi=300)
+        plt.close(fig)
+    #
+    if not offline:
+        plt.show()
+

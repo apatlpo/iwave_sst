@@ -74,19 +74,17 @@ def download_hw(times):
             ftp.cwd(fdir)
             files_all = ftp.nlst()
             files = []
-            #flag=False
             for f in files_all:
                 if fname_pref in f:
                     files.append(f)
-                    #flag=True
-    
+            #
             for fname in files:
                 #
-                filedat = dpath+fname_pref
+                fileraw = dpath+fname_pref
                 print(fname)
-                maskfiles.append(filedat)
+                maskfiles.append(fileraw)
                 #
-                if not os.path.isfile(filedat):
+                if not os.path.isfile(fileraw):
                     print('No cloud mask file found, download from jaxa ftp: '+fname)
                     lfile = open(dpath+fname,'wb')
                     try:
@@ -95,7 +93,7 @@ def download_hw(times):
                         print('Error')
                     lfile.close()
                 else:
-                    print(filedat+' is already on disk')
+                    print(fileraw+' is already on disk')
         except:
             print('Cannot access data in '+fdir)
             
