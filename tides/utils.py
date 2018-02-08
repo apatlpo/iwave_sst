@@ -22,13 +22,13 @@ def grad(d,lon=None,lat=None,mask=None):
         lon = 'longitude'
     if lat is None:
         lat = 'latitude'
-    dx = ndiff(d,lon)
+    dx = ndiff(d,lon)/np.cos(np.pi/180.*d[lat])
     dy = ndiff(d,lat)
     return dx, dy
 
 def ndiff(d,c):
     c0 = d[c].values
-    di = d.diff(c,label='lower')/d[c].diff(c,label='lower')
+    di = d.diff(c,label='lower')/d[c].diff(c,label='lower')/(111.e3)
     di = (di + di.roll(**{c:1}))*.5
     return di
 
