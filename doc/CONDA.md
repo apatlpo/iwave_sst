@@ -12,6 +12,7 @@ conda install xarray -c conda-forge
 conda install cartopy -c conda-forge
 conda install jupyter -c conda-forge
 pip install cmocean
+conda install utide -c conda-forge
 ```
 
 # Miniconda in general:

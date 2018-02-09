@@ -27,7 +27,7 @@ def grad(d,lon=None,lat=None,mask=None):
     return dx, dy
 
 def ndiff(d,c):
-    c0 = d[c].values
+    #c0 = d[c].values
     di = d.diff(c,label='lower')/d[c].diff(c,label='lower')/(111.e3)
     di = (di + di.roll(**{c:1}))*.5
     return di
