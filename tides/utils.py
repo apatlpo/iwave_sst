@@ -63,7 +63,7 @@ def c2ri(c):
 
 #------------------------------ bathymetry ---------------------------------------
 
-def load_bathy(b='etopo2', lon=None, lat=None):
+def load_bathy(lon=None, lat=None, b='etopo2'):
     ''' Load bathymetry
     '''
     #
@@ -71,7 +71,7 @@ def load_bathy(b='etopo2', lon=None, lat=None):
         #bfile = '/home2/pharos/othr/aponte/bathy/ETOPO2v2c_f4.nc'
         bfile = './ETOPO2v2c_f4.nc'
         hb = -xr.open_dataset(bfile)['z']
-        print(hb)
+    #
     if lon is not None and lat is not None:
         # should use xESMF
         from scipy.interpolate import RectBivariateSpline
@@ -82,13 +82,8 @@ def load_bathy(b='etopo2', lon=None, lat=None):
         lonb = np.roll(lonb,-iroll)
         hb = np.roll(hb.values,-iroll,axis=1)
         lonb[lonb<0] = lonb[lonb<0] + 360.
-        print(lonb.shape)
-        #pass
         # should add a test for lon type
         hi = RectBivariateSpline(lonb, latb, hb.T, kx=1, ky=1)(lon,lat).T
-        print(hi.shape)
-        print(lon.shape)
-        print(lat.shape)
         return xr.DataArray(hi, coords={'latitude': lat, 'longitude': lon}, dims=('latitude', 'longitude'))
     else:
         return hb
