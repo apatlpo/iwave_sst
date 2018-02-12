@@ -6,11 +6,13 @@ import xarray as xr
 import dask.array as da
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
-from cmocean import cm
-import time
+#from cmocean import cm
+#import time
 #import os
 #from datetime import datetime
+import ephem
 
+r2d = 180./np.pi
 
 #------------------------------ MASK ---------------------------------------
 
@@ -78,10 +80,13 @@ def plot_mask(mask, colorbar=False, title=None, vmin=0., vmax=1., savefig=None, 
     #
     if savefig is not None:
         fig.savefig(savefig, dpi=300)
-        plt.close(fig)
+        if offline:
+            plt.close(fig)
     #
     if not offline:
         plt.show()
+    #
+    return fig, ax
 
 #
 def coarsen(fmask, dl, chunks=()):
@@ -261,3 +266,164 @@ def plot_sst(sst, colorbar=False, title=None, vmin=10., vmax=35., savefig=None, 
     if not offline:
         plt.show()
 
+
+        
+#------------------------------ compute angle to specular reflection ---------------------------------------
+
+# read himawari tle data
+def read_hw_tle(time):
+    """ read Himawari8 TLE text files in order to build a pyephem body object
+    Depending on the precision you want on the satellite position, this may 
+    not be accurate enough
+    
+    TLE format: https://en.wikipedia.org/wiki/Two-line_element_set
+    TLE databases:
+        http://www.data.jma.go.jp/mscweb/en/operation8/orb_info/index.html
+        http://celestrak.com/
+    """
+    dpath='./tle/'
+    file = dpath+'tle_h8_%d.txt'%(time.year)
+    f = open(file,'r')
+    for line in f:
+        if 'HIMAWARI-8' in line:
+            tle=[line]
+        elif line[0] == '1':
+            tle.append(line)
+            # store tle time
+            lsplt = line.split()[3]
+            tletime = ephem.Date('20'+lsplt[:2]+'/00')
+            tletime+=float(lsplt[2:])
+        elif line[0] == '2':
+            tle.append(line)
+            if np.abs(ephem.date(time)-tletime)<7.1:
+                hw = ephem.readtle(tle[0], tle[1], tle[2])
+                hw.compute(time)
+                #print('hw: sublong=%f sublat=%f' % (hw.sublong*r2d, hw.sublat*r2d))
+    f.close()
+    return hw
+
+#
+class body():
+    def __init__(self,lon,lat):
+        # simple data holder that freezes locations
+        self.lon=lon
+        self.lat=lat
+        return
+
+### computes the angle with respect to specular solar reflection
+def get_vector(body):
+    # in e_r, e_east, e_north basis
+    return [np.sin(body.alt),np.cos(body.alt)*np.sin(body.az),np.cos(body.alt)*np.cos(body.az)]
+
+def get_angle(v1,v2,acute=True):
+    angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+    if (acute == True):
+        return angle
+    else:
+        return 2*np.pi - angle
+
+def angle2specular(body_sun,body):
+    v_sun = get_vector(body_sun)
+    v1 = get_vector(body)
+    v1 = np.array(v1)+np.array(v_sun)
+    v1 = v1/np.sqrt(v1[0]**2+v1[1]**2+v1[2]**2)
+    # sun specular reflection:
+    #v2 = [v_sun[0],-v_sun[1],-v_sun[2]]
+    # normal
+    v2 = [1.,0.,0.]
+    return get_angle(v2,v1)
+
+##
+def sun_zenith(sun, time):
+    o = ephem.Observer()
+    o.lon=0.
+    o.lat=0.
+    o.date=time
+    o.elevation = 0.
+    #
+    sun.compute(o)
+    v = get_vector(sun)
+    sunlat=np.arcsin(v[2])
+    sunlon= (np.arctan2(v[1],v[0])+o.lon)
+    return sunlon*r2d, sunlat*r2d
+
+##
+def spherical2cartesian(v,lon,lat):
+    # e_r,e_east,e_north to ex,ey,ez
+    M = np.array([[np.cos(lat)*np.cos(lon), -np.sin(lon) , -np.sin(lat)*np.cos(lon)], \
+                  [np.cos(lat)*np.sin(lon) , np.cos(lon), -np.sin(lat)*np.sin(lon)], \
+                  [np.sin(lat) , 0., np.cos(lat)]])
+    return M.dot(v)
+
+def cartesian2spherical(v,lon,lat):
+    # ex,ey,ez to e_r,e_east,e_north
+    M = np.array([[np.cos(lat)*np.cos(lon), -np.sin(lon) , -np.sin(lat)*np.cos(lon)], \
+                  [np.cos(lat)*np.sin(lon) , np.cos(lon), -np.sin(lat)*np.sin(lon)], \
+                  [np.sin(lat) , 0., np.cos(lat)]])
+    return M.transpose().dot(v)
+
+def get_azalt(lon,lat,r,o):
+    """ compute azimuth and altitude from lon/lat/range
+    """
+    v = r * np.array([np.cos(lon)*np.cos(lat),np.sin(lon)*np.cos(lat),np.sin(lat)]) # cartesian basis
+    v += -ephem.earth_radius*np.array([np.cos(o.lon)*np.cos(o.lat),np.sin(o.lon)*np.cos(o.lat),np.sin(o.lat)]) # substract observer position
+    v = cartesian2spherical(v,o.lon,o.lat) # transform to spherical (er,eE,eN)
+    v = v/np.sqrt(v[0]**2+v[1]**2+v[2]**2)
+    alt = np.arcsin(v[0])
+    az = np.arctan2(v[1],v[2])
+    return az, alt
+
+
+def get_reflection_angles(lon, lat, time):
+    t = time.strftime('%Y/%m/%d %H:%M') #'2017/m/20 h:00'
+    #
+    sun = ephem.Sun()
+    sun.compute(t)
+    if True:
+        sunlon, sunlat = sun_zenith(sun, t)
+        print('Sun zenith location: lon=%.1f, lat=%.1f' %(sunlon,sunlat))
+    #
+    #line1='HIMAWARI-8'
+    #line2='1 40267U 14060A   17120.00341436 -.00000294  00000-0  00000-0 0  9998'
+    #line3='2 40267   0.0339  75.6694 0000630 345.5429 298.7960  1.00272895  9323'
+    #_hw = ephem.readtle(line1, line2, line3)
+    #_hw.compute(t)
+    _hw = read_hw_tle(time)
+    print('Himawari position: sublong=%f sublat=%f' % (_hw.sublong*r2d, _hw.sublat*r2d))
+    #
+    Nlon = lon.size
+    Nlat = lat.size
+    #
+    alt = np.zeros((Nlat, Nlon))
+    az = np.zeros((Nlat, Nlon))
+    angle2spec = np.zeros((Nlat, Nlon))
+    for j in range(Nlat):
+        for i in range(Nlon):
+            ob = ephem.Observer()
+            ob.lon=str(lon[i].values)
+            ob.lat=str(lat[j].values)
+            ob.elevation=0.
+            ob.date = t
+            #
+            sun.compute(ob)
+            #
+            _hw.compute(ob)
+            #hw = body(_hw.sublong,_hw.sublat)
+            #hw.range = _hw.range
+            #
+            #hw.az, hw.alt = _hw.az
+            #hw.az, hw.alt = get_azalt(hw.lon, hw.lat, hw.range, ob)
+            #hw.az, hw.alt = get_azalt(-140., 0., hw.range, ob)
+            alt[j,i], az[j,i] = sun.alt, sun.az
+            #
+            angle2spec[j,i] = angle2specular(sun,_hw)
+    #
+    #sunz = np.unravel_index(np.argmax(alt),alt.shape)
+    #glint = np.unravel_index(np.argmin(angle2spec),angle2spec.shape)
+    dims = ('longitude', 'latitude')
+    return xr.Dataset({'sun_az': (dims, az.T), 'sun_alt': (dims, alt.T),
+                       'angle2spec': (dims, angle2spec.T)},
+                        coords={'longitude': lon, 'latitude': lat})
+
+
+        
