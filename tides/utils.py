@@ -63,30 +63,33 @@ def c2ri(c):
 
 #------------------------------ bathymetry ---------------------------------------
 
-def load_bathy(b='etopo2'):
+def load_bathy(b='etopo2', lon=None, lat=None):
     ''' Load bathymetry
     '''
-    interp = False
     #
     if b is 'etopo2':
         #bfile = '/home2/pharos/othr/aponte/bathy/ETOPO2v2c_f4.nc'
         bfile = './ETOPO2v2c_f4.nc'
-        bathy = xr.open_dataset(bfile)
-        #nc = Dataset(bfile)
-        #lonb = nc.variables['x'][:]
-        #latb = nc.variables['y'][:]
-        #hb = nc.variables['z'][:]
-        #nc.close()
-        interp = True
-    if interp:
-        from scipy.interpolate import interp2d, RectBivariateSpline
-        #lonb, latb = np.meshgrid(lonb,latb)
-        #self.h = interp2d(lonb, latb, hb.T, kind='linear')(self.lon,self.lat)
+        hb = -xr.open_dataset(bfile)['z']
+        print(hb)
+    if lon is not None and lat is not None:
+        # should use xESMF
+        from scipy.interpolate import RectBivariateSpline
+        lonb = hb['x'].values
+        latb = hb['y'].values
+        #
         iroll = np.where(lonb<0)[0][-1]+1
         lonb = np.roll(lonb,-iroll)
-        hb = np.roll(hb,-iroll,axis=1)
+        hb = np.roll(hb.values,-iroll,axis=1)
         lonb[lonb<0] = lonb[lonb<0] + 360.
-        return RectBivariateSpline(lonb, latb, hb.T, kx=1, ky=1)(self.lon,self.lat).T
+        print(lonb.shape)
+        #pass
+        # should add a test for lon type
+        hi = RectBivariateSpline(lonb, latb, hb.T, kx=1, ky=1)(lon,lat).T
+        print(hi.shape)
+        print(lon.shape)
+        print(lat.shape)
+        return xr.DataArray(hi, coords={'latitude': lat, 'longitude': lon}, dims=('latitude', 'longitude'))
     else:
         return hb
         
