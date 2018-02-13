@@ -11,6 +11,8 @@ import cartopy.crs as ccrs
 #import os
 #from datetime import datetime
 import ephem
+import threading
+
 
 r2d = 180./np.pi
 
@@ -63,30 +65,39 @@ def process_raw_mask(mask):
     return fmask
 
 #
-def plot_mask(mask, colorbar=False, title=None, vmin=0., vmax=1., savefig=None, offline=False):
-    if offline:
-        plt.switch_backend('agg')
-    fig = plt.figure(figsize=(10,10))
-    #ax = plt.axes(projection=ccrs.Geostationary(central_longitude=140.0)) # may cause crash when distributed
-    ax = fig.add_subplot(111, projection=ccrs.Geostationary(central_longitude=140.0))
-    mask.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
-                         x='longitude', y='latitude', add_colorbar=colorbar);
-    ax.coastlines(color='w')
-    #
-    if title is None:
-        ax.set_title('HW cloud mask')
-    else:
-        ax.set_title(title)
-    #
-    if savefig is not None:
-        fig.savefig(savefig, dpi=300)
+def plot_mask(mask, colorbar=False, title=None, vmin=0., vmax=1., savefig=None, offline=False, angles=None):
+    MPL_LOCK = threading.Lock()
+    with MPL_LOCK:
         if offline:
-            plt.close(fig)
-    #
-    if not offline:
-        plt.show()
-    #
-    return fig, ax
+            plt.switch_backend('agg')
+        fig = plt.figure(figsize=(10,10))
+        #ax = plt.axes(projection=ccrs.Geostationary(central_longitude=140.0)) # may cause crash when distributed
+        ax = fig.add_subplot(111, projection=ccrs.Geostationary(central_longitude=140.0))
+        mask.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
+                             x='longitude', y='latitude', add_colorbar=colorbar);
+        #
+        if angles is not None:
+            im = (angles['angle2spec']*r2d).plot.contour(levels=[15.,30.,45.], colors=['orange'], 
+                                                         ax=ax, transform=ccrs.PlateCarree(),
+                                                         x='longitude', y='latitude', add_labels=True)
+            im.clabel()
+        #
+        ax.coastlines(color='w')
+        #
+        if title is None:
+            ax.set_title('HW cloud mask')
+        else:
+            ax.set_title(title)
+        #
+        if savefig is not None:
+            fig.savefig(savefig, dpi=300)
+            if offline:
+                plt.close(fig)
+        #
+        if not offline:
+            plt.show()
+        #
+        return fig, ax
 
 #
 def coarsen(fmask, dl, chunks=()):
@@ -271,7 +282,7 @@ def plot_sst(sst, colorbar=False, title=None, vmin=10., vmax=35., savefig=None, 
 #------------------------------ compute angle to specular reflection ---------------------------------------
 
 # read himawari tle data
-def read_hw_tle(time):
+def read_hw_tle(time, tlepath):
     """ read Himawari8 TLE text files in order to build a pyephem body object
     Depending on the precision you want on the satellite position, this may 
     not be accurate enough
@@ -281,8 +292,7 @@ def read_hw_tle(time):
         http://www.data.jma.go.jp/mscweb/en/operation8/orb_info/index.html
         http://celestrak.com/
     """
-    dpath='./tle/'
-    file = dpath+'tle_h8_%d.txt'%(time.year)
+    file = tlepath+'tle_h8_%d.txt'%(time.year)
     f = open(file,'r')
     for line in f:
         if 'HIMAWARI-8' in line:
@@ -319,6 +329,19 @@ def get_angle(v1,v2,acute=True):
     else:
         return 2*np.pi - angle
 
+def sun_zenith(sun, time):
+    o = ephem.Observer()
+    o.lon=0.
+    o.lat=0.
+    o.date=time
+    o.elevation = 0.
+    #
+    sun.compute(o)
+    v = get_vector(sun)
+    sunlat=np.arcsin(v[2])
+    sunlon= (np.arctan2(v[1],v[0])+o.lon)
+    return sunlon*r2d, sunlat*r2d    
+    
 def angle2specular(body_sun,body):
     """ Computes the angle to specular reflection
     """
@@ -332,7 +355,7 @@ def angle2specular(body_sun,body):
     v2 = [1.,0.,0.]
     return get_angle(v2,v1)
 
-def get_reflection_angles(lon, lat, time):
+def get_reflection_angles(lon, lat, time, tlepath='./tle/'):
     """ Compute three relevant angles for Himawari sunglint analysis:
     angle to specular reflection, sun azimuth, sun altitude
     """
@@ -344,8 +367,8 @@ def get_reflection_angles(lon, lat, time):
         sunlon, sunlat = sun_zenith(sun, t)
         print('Sun zenith location: lon=%.1f, lat=%.1f' %(sunlon,sunlat))
     #
-    hw = read_hw_tle(time)
-    print('Himawari position: sublong=%f sublat=%f' % (_hw.sublong*r2d, _hw.sublat*r2d))
+    hw = read_hw_tle(time, tlepath)
+    print('Himawari position: sublong=%f sublat=%f' % (hw.sublong*r2d, hw.sublat*r2d))
     #
     Nlon = lon.size
     Nlat = lat.size
