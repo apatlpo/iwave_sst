@@ -66,38 +66,38 @@ def process_raw_mask(mask):
 
 #
 def plot_mask(mask, colorbar=False, title=None, vmin=0., vmax=1., savefig=None, offline=False, angles=None):
-    MPL_LOCK = threading.Lock()
-    with MPL_LOCK:
+    #MPL_LOCK = threading.Lock()
+    #with MPL_LOCK:
+    if offline:
+        plt.switch_backend('agg')
+    fig = plt.figure(figsize=(10,10))
+    #ax = plt.axes(projection=ccrs.Geostationary(central_longitude=140.0)) # may cause crash when distributed
+    ax = fig.add_subplot(111, projection=ccrs.Geostationary(central_longitude=140.0))
+    mask.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
+                         x='longitude', y='latitude', add_colorbar=colorbar);
+    #
+    if angles is not None:
+        im = (angles['angle2spec']*r2d).plot.contour(levels=[15.,30.,45.], colors=['orange'], 
+                                                     ax=ax, transform=ccrs.PlateCarree(),
+                                                     x='longitude', y='latitude', add_labels=True)
+        im.clabel()
+    #
+    ax.coastlines(color='w')
+    #
+    if title is None:
+        ax.set_title('HW cloud mask')
+    else:
+        ax.set_title(title)
+    #
+    if savefig is not None:
+        fig.savefig(savefig, dpi=300)
         if offline:
-            plt.switch_backend('agg')
-        fig = plt.figure(figsize=(10,10))
-        #ax = plt.axes(projection=ccrs.Geostationary(central_longitude=140.0)) # may cause crash when distributed
-        ax = fig.add_subplot(111, projection=ccrs.Geostationary(central_longitude=140.0))
-        mask.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
-                             x='longitude', y='latitude', add_colorbar=colorbar);
-        #
-        if angles is not None:
-            im = (angles['angle2spec']*r2d).plot.contour(levels=[15.,30.,45.], colors=['orange'], 
-                                                         ax=ax, transform=ccrs.PlateCarree(),
-                                                         x='longitude', y='latitude', add_labels=True)
-            im.clabel()
-        #
-        ax.coastlines(color='w')
-        #
-        if title is None:
-            ax.set_title('HW cloud mask')
-        else:
-            ax.set_title(title)
-        #
-        if savefig is not None:
-            fig.savefig(savefig, dpi=300)
-            if offline:
-                plt.close(fig)
-        #
-        if not offline:
-            plt.show()
-        #
-        return fig, ax
+            plt.close(fig)
+    #
+    if not offline:
+        plt.show()
+    #
+    return fig, ax
 
 #
 def coarsen(fmask, dl, chunks=()):
@@ -395,6 +395,3 @@ def get_reflection_angles(lon, lat, time, tlepath='./tle/'):
     return xr.Dataset({'sun_az': (dims, az.T), 'sun_alt': (dims, alt.T),
                        'angle2spec': (dims, angle2spec.T)},
                         coords={'longitude': lon, 'latitude': lat})
-
-
-        
