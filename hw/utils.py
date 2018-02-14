@@ -313,14 +313,16 @@ def read_hw_tle(time, tlepath):
     return hw
 
 
-def get_vector(body):
+##
+
+def get_vector_pyephem(body):
     """ Get the local vector pointing toward a body given its position computed 
     given an observer (via pyephem) 
     The vector is in earth coordinates system: in e_r, e_east, e_north basis
     """
     return [np.sin(body.alt),np.cos(body.alt)*np.sin(body.az),np.cos(body.alt)*np.cos(body.az)]
 
-def get_angle(v1,v2,acute=True):
+def get_angle_pyephem(v1,v2,acute=True):
     """ Compute the angle between two vectors
     """
     angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
@@ -329,7 +331,7 @@ def get_angle(v1,v2,acute=True):
     else:
         return 2*np.pi - angle
 
-def sun_zenith(sun, time):
+def sun_zenith_pyephem(sun, time):
     o = ephem.Observer()
     o.lon=0.
     o.lat=0.
@@ -337,16 +339,16 @@ def sun_zenith(sun, time):
     o.elevation = 0.
     #
     sun.compute(o)
-    v = get_vector(sun)
+    v = get_vector_pyephem(sun)
     sunlat=np.arcsin(v[2])
     sunlon= (np.arctan2(v[1],v[0])+o.lon)
     return sunlon*r2d, sunlat*r2d    
     
-def angle2specular(body_sun,body):
+def angle2specular_pyephem(body_sun,body):
     """ Computes the angle to specular reflection
     """
-    v_sun = get_vector(body_sun)
-    v1 = get_vector(body)
+    v_sun = get_vector_pyephem(body_sun)
+    v1 = get_vector_pyephem(body)
     v1 = np.array(v1)+np.array(v_sun)
     v1 = v1/np.sqrt(v1[0]**2+v1[1]**2+v1[2]**2)
     # sun specular reflection:
@@ -355,7 +357,7 @@ def angle2specular(body_sun,body):
     v2 = [1.,0.,0.]
     return get_angle(v2,v1)
 
-def get_reflection_angles(lon, lat, time, tlepath='./tle/'):
+def get_reflection_angles_pyephem(lon, lat, time, tlepath='./tle/'):
     """ Compute three relevant angles for Himawari sunglint analysis:
     angle to specular reflection, sun azimuth, sun altitude
     """
@@ -364,7 +366,7 @@ def get_reflection_angles(lon, lat, time, tlepath='./tle/'):
     sun = ephem.Sun()
     sun.compute(t)
     if True:
-        sunlon, sunlat = sun_zenith(sun, t)
+        sunlon, sunlat = sun_zenith_pyephem(sun, t)
         print('Sun zenith location: lon=%.1f, lat=%.1f' %(sunlon,sunlat))
     #
     hw = read_hw_tle(time, tlepath)
@@ -376,6 +378,7 @@ def get_reflection_angles(lon, lat, time, tlepath='./tle/'):
     alt = np.zeros((Nlat, Nlon))
     az = np.zeros((Nlat, Nlon))
     angle2spec = np.zeros((Nlat, Nlon))
+    
     for j in range(Nlat):
         for i in range(Nlon):
             ob = ephem.Observer()
@@ -389,9 +392,143 @@ def get_reflection_angles(lon, lat, time, tlepath='./tle/'):
             hw.compute(ob)
             alt[j,i], az[j,i] = sun.alt, sun.az
             #
-            angle2spec[j,i] = angle2specular(sun,hw)
+            angle2spec[j,i] = angle2specular_pyephem(sun,hw)
     #
     dims = ('longitude', 'latitude')
     return xr.Dataset({'sun_az': (dims, az.T), 'sun_alt': (dims, alt.T),
                        'angle2spec': (dims, angle2spec.T)},
                         coords={'longitude': lon, 'latitude': lat})
+
+##
+cos = lambda theta: np.cos(theta)
+sin = lambda theta: np.sin(theta)
+
+def get_vector(body, az=None, alt=None):
+    """ Get the local vector pointing toward a body given its position computed 
+    given an observer (via pyephem) 
+    The vector is in earth coordinates system: in e_r, e_east, e_north basis
+    """
+    if body is not None:
+        return [sin(body.alt), cos(body.alt)*sin(body.az), cos(body.alt)*cos(body.az)]
+    elif alt is not None and az is not None:
+        return [sin(alt), cos(alt)*sin(az), cos(alt)*cos(az)]
+
+def get_angle(v1, v2, acute=True):
+    """ Compute the angle between two vectors
+    """
+    v1v2dot = v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]
+    nv1 = np.sqrt(v1[0]**2+v1[1]**2+v1[2]**2)
+    nv2 = np.sqrt(v2[0]**2+v2[1]**2+v2[2]**2)
+    angle = np.arccos( v1v2dot / ( nv1 * nv2 ) )
+    if (acute == True):
+        return angle
+    else:
+        return 2*np.pi - angle
+
+def sun_zenith(sun, time):
+    o = ephem.Observer()
+    o.lon = 0.
+    o.lat = 0.
+    o.date = time
+    o.elevation = 0.
+    #
+    sun.compute(o)
+    v = get_vector(sun)
+    sunlat = np.arcsin(v[2])
+    sunlon = np.arctan2(v[1],v[0]) + o.lon
+    return sunlon, sunlat
+
+def spherical2cartesian(v, lon, lat):
+    """ e_r, e_east, e_north to ex, ey, ez
+    """
+    M = [[cos(lat)*cos(lon), -sin(lon), -sin(lat)*cos(lon)],
+         [cos(lat)*sin(lon) , cos(lon), -sin(lat)*sin(lon)],
+         [sin(lat) , 0., cos(lat)]]
+    vout = []
+    for i in range(3):
+        vout.append(lon*lat*0.) # enforces right coordinates
+        for j in range(3):
+            vout[i] = vout[i] + M[i][j]*v[j]
+    return vout
+
+def cartesian2spherical(v, lon, lat):
+    """ ex, ey, ez to e_r, e_east, e_north
+    """
+    M = [[cos(lat)*cos(lon), -sin(lon), -sin(lat)*cos(lon)],
+         [cos(lat)*sin(lon) , cos(lon), -sin(lat)*sin(lon)],
+         [sin(lat) , 0., cos(lat)]]
+    #for i in range(3): print(v[i]) # lon/lat, lon/lat, lat
+    vout = []
+    for i in range(3):
+        vout.append(lon*lat*0.) # enforces right coordinates
+        for j in range(3):
+            vout[i] = vout[i] + M[j][i]*v[j]
+    return vout
+
+def get_azalt(lon, lat, r, olon, olat):
+    """ compute azimuth and altitude from lon/lat/range
+    """
+    # compute vectors in a cartesian frame of reference
+    v = [r*cos(lon)*cos(lat), r*sin(lon)*cos(lat), r*sin(lat)]
+    #
+    ro = ephem.earth_radius
+    vo = [ro*cos(olon)*cos(olat), ro*sin(olon)*cos(olat), ro*sin(olat)]
+    #
+    for i in range(3): v[i] = v[i] - vo[i]
+    #
+    v = cartesian2spherical(v, olon, olat) # transform to spherical (er,eE,eN)
+    nv = np.sqrt(v[0]**2 + v[1]**2 + v[2]**2)
+    for i in range(3): v[i] = v[i]/nv
+    az = np.arctan2(v[1],v[2])
+    alt = np.arcsin(v[0])
+    return az, alt
+
+def angle2specular(sun_az, sun_alt, body_az, body_alt):
+    """ Computes the angle to specular reflection
+    """
+    v_sun = get_vector(None, az=sun_az, alt=sun_alt)
+    v1 = get_vector(None, az=body_az, alt=body_alt)    
+    for i in range(3): v1[i] = v1[i] + v_sun[i]
+    nv1 = np.sqrt(v1[0]**2+v1[1]**2+v1[2]**2)
+    for i in range(3): v1[i] = v1[i]/nv1  
+    # sun specular reflection:
+    #v2 = [v_sun[0],-v_sun[1],-v_sun[2]]
+    # normal
+    v2 = [1.,0.,0.]
+    return get_angle(v2,v1)
+
+def get_reflection_angles(lon, lat, time, tlepath='./tle/'):
+    """ Compute three relevant angles for Himawari sunglint analysis:
+    angle to specular reflection, sun azimuth, sun altitude
+    
+    Parameters
+    ----------
+    lon, lat: xarray
+        lon, lat in degrees
+    time: datenum time
+    """
+    t = time.strftime('%Y/%m/%d %H:%M') #'2017/m/20 h:00'
+    #
+    sun = ephem.Sun()
+    sun.compute(t)
+    sunlon, sunlat = sun_zenith(sun, t)
+    print('Sun zenith location: lon=%.1f, lat=%.1f' %(sunlon*r2d, sunlat*r2d))
+    #
+    hw = read_hw_tle(time, tlepath)
+    print('Himawari position: sublong=%f sublat=%f' % (hw.sublong*r2d, hw.sublat*r2d))
+    #
+    ob = ephem.Observer()
+    ob.lon = str(0.)
+    ob.lat = str(0.)
+    ob.elevation = 0.
+    ob.date = t
+    #
+    sun.compute(ob)
+    hw.compute(ob)
+    # sun and himawari azimuth and altitude at observer positions
+    sun_az, sun_alt = get_azalt(sunlon, sunlat, sun.earth_distance*ephem.meters_per_au, lon/r2d, lat/r2d)
+    hw_az, hw_alt = get_azalt(hw.sublong, hw.sublat, hw.range, lon/r2d, lat/r2d)
+    #
+    angle2spec = angle2specular(sun_az, sun_alt, hw_az, hw_alt)
+    #
+    return xr.Dataset({'sun_az': sun_az, 'sun_alt': sun_alt,'angle2spec': angle2spec}), sun, hw
