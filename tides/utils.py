@@ -14,14 +14,15 @@ cpd=2.*np.pi/86400. # radian/s
 
 #------------------------------ gradients ---------------------------------------
 
+#
 def grad(d, lon='longitude', lat='latitude'):
     """ Compute the gradient of data on lon/lat grid
     """
-    dx = diff_lonlat(d,lon)
-    dy = diff_lonlat(d,lat)
+    dx = di_lonlat(d,lon)
+    dy = di_lonlat(d,lat)
     return dx, dy
 
-def diff_lonlat(d, c):
+def di_lonlat(d, c):
     """ Compute the gradient of a variable laid out on a regular lon/lat grid
     """
     if c is 'longitude':
@@ -30,13 +31,42 @@ def diff_lonlat(d, c):
     else:
         di = d   
     #
-    di = di.diff(c,label='lower')/di[c].diff(c,label='lower')/(111.e3)
-    di = (di + di.roll(**{c:1}))*.5
+    dx = di[c].diff(c,label='lower')*111.e3
+    di = di.diff(c,label='lower')/dx
+    di = (di + di.shift(**{c:1}))*.5
     #
     if c is 'longitude':
         di = di/np.cos(np.pi/180.*di['latitude'])
     return di
 
+#
+def lap(d, lon='longitude', lat='latitude'):
+    """ Compute the laplacian of data on lon/lat grid
+    """
+    d2x = di2_lonlat(d,lon)
+    d2y = di2_lonlat(d,lat)
+    d2x, d2y = xr.align(d2x, d2y, join='outer')
+    lap = d2x + d2y
+    return lap
+
+def di2_lonlat(d, c):
+    """ Compute the second derivative of a variable laid out on a regular lon/lat grid
+    """
+    if c is 'longitude':
+        # treats dateline data correctly
+        di = lon_extension(d)
+    else:
+        di = d   
+    #
+    dx = di[c].diff(c,label='lower')*111.e3    
+    di = di.diff(c,label='lower')/dx
+    di = (di - di.shift(**{c:1}))/dx
+    #
+    if c is 'longitude':
+        di = di/np.cos(np.pi/180.*di['latitude'])**2
+    return di
+
+#
 def lon_extension(v):
     """ Extends data array longitudinally in order to include dateline
     points in a computation of gradients
