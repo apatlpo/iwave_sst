@@ -64,8 +64,6 @@ def parse_input():
     parser.add_option("-c", "--coordinates", dest="c",
                       help="coordinate bounds, ex: -c lonmin,lonmax,latmin,latmax)", \
                       default='105.,125.,-40.,-10')
-    #parser.add_option("-lat", "--latitude", dest="lat",
-    #                  help="latitude bounds", default=[-23., -10])
     parser.add_option("-n", "--name", dest="name",
                       help="box name", default='NWA')    
     parser.add_option("-s", "--timestart", dest="tstart",

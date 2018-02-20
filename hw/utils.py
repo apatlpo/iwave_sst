@@ -1,6 +1,7 @@
 ''' Utils for HW mask and sst processing
 '''
 
+import os
 import numpy as np
 import xarray as xr
 import dask.array as da
@@ -8,11 +9,14 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 #from cmocean import cm
 #import time
-#import os
 #from datetime import datetime
 import ephem
 import threading
-
+#
+try:
+    from satpy import Scene
+except:
+    print('satpy not available')
 
 r2d = 180./np.pi
 
@@ -278,7 +282,64 @@ def plot_sst(sst, colorbar=False, title=None, vmin=10., vmax=35., savefig=None, 
         plt.show()
 
 
+#------------------------------ Himwari binary data (band) ---------------------------------------
         
+
+def uncompress(path,file):
+    # calls mac os unziper
+    os.system('bunzip2 '+os.path.join(path,file))
+    #os.system('tar -xjvf '+os.path.join(path,file)+' -C '+path)
+    
+    
+def read_hw_bin(file, t, blon=(105.,125.), blat=(-40.,-10), band='B03'):
+    """ load himawari binary data and place into an xarray
+    """
+    # use satpy to read data
+    scn = Scene(sensor="ahi", reader="ahi_hsd", filenames=[file])
+    scn.load([band])
+    # load numpy arrays
+    d = scn['B03'].data
+    lon,lat=scn['B03'].info['area'].get_lonlats()
+    # create a xarray
+    #ds = xr.Dataset({band: (['y','x'], d)}, coords={'longitude': (['y','x'], lon), 'latitude': (['y','x'], lat)})
+    ds = xr.Dataset({band: (['y','x'], d), 'longitude': (['y','x'], lon), 'latitude': (['y','x'], lat)})
+    #ds = ds.where(ds['longitude']<1e4)    
+    # subsample
+    #print(np.amin(blon))
+    ds = ds.where(ds['longitude']>np.amin(blon), drop=True)
+    ds = ds.where(ds['longitude']<np.amax(blon), drop=True)
+    ds = ds.where(ds['latitude']>np.amin(blat), drop=True)
+    ds = ds.where(ds['latitude']<np.amax(blat), drop=True)
+    return ds, band
+    
+
+#
+def plot_band(band, colorbar=False, title=None, vmin=None, vmax=None, savefig=None, offline=False):
+    if offline:
+        plt.switch_backend('agg')
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
+    im = band.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
+                        x='longitude', y='latitude', add_colorbar=colorbar, cmap=cm.thermal)
+    fig.colorbar(im)
+    gl=ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=2, color='k', alpha=0.5, linestyle='--')
+    gl.xlabels_top=False
+    ax.coastlines(color='k')
+    #
+    if title is None:
+        ax.set_title('HW sst')
+    else:
+        ax.set_title(title)
+    #
+    if savefig is not None:
+        fig.savefig(savefig, dpi=150)
+        time.sleep(.1)
+        plt.close(fig)
+    #
+    if not offline:
+        plt.show()    
+
+
 #------------------------------ compute angle to specular reflection ---------------------------------------
 
 # read himawari tle data
