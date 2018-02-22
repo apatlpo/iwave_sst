@@ -53,7 +53,8 @@ def download_hw(times):
     host, login, passwd = ftp_login()
     ftp = ftplib.FTP(host)
     ftp.login(login, passwd)
-
+    print('Logged in JAXA ftp')
+    
     # loop around times
     maskfiles=[]
     for time in times:
@@ -81,7 +82,6 @@ def download_hw(times):
             for fname in files:
                 #
                 fileraw = dpath+fname_pref
-                print(fname)
                 maskfiles.append(fileraw)
                 #
                 if not os.path.isfile(fileraw):

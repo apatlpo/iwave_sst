@@ -1,8 +1,9 @@
-
 # coding: utf-8
-
 # 
-# # Play with JAXA Himawari 
+# Download JAXA Himawari SST data
+#
+# log:
+#     python download_sst.py -c 120.,127.,-17,-10 -n NWAM -s 2017,4,1,0,0,0 -d 60 
 # 
 # In order to search for clear skies
 # https://worldview.earthdata.nasa.gov/
@@ -76,7 +77,6 @@ def parse_input():
     box = {'lon': slice(c[0],c[1]), 'lat': slice(np.max(c[2:]),np.min(c[2:])), 'name': options.name}
     #
     tstart = [int(v) for v in options.tstart.split(',')]
-    print(tstart)
     tstart=datetime.datetime(*tstart)
     # 
     return box, tstart, float(options.delt)
@@ -100,6 +100,7 @@ def download_hw(times,box=None):
     host, login, passwd = ftp_login()
     ftp = ftplib.FTP(host)
     ftp.login(login, passwd)
+    print('Logged in JAXA ftp')
 
     # loop around times
     sstfiles=[]
@@ -111,13 +112,16 @@ def download_hw(times,box=None):
         YYYYMMDDhhmm = time.strftime('%Y%m%d%H%M')
         #
         #VER='v100'; VERd='v1.0'
-        VER='v101'; VERd='v1.1'
-        FVER='01.0'
+        #VER='v101'; VERd='v1.1'
+        VER = 'v102'; VERd = 'v1.2'
+        FVER = '01.0'
         #
-        fdir='/pub/himawari/L2/SST/'+VER+'_nc4_normal_nrt/'+YYYYMM+'/'+DD+'/'
-        fname_pref=YYYYMMDDhhmm+'00-JAXA-L2P_GHRSST-SSTskin-H08_AHI_NRT-'+ \
+        #fdir='/pub/himawari/L2/SST/'+VER+'_nc4_normal_nrt/'+YYYYMM+'/'+DD+'/'
+        fdir = '/pub/himawari/L2/SST/'+VER+'_nc4_normal_std/'+YYYYMM+'/'+DD+'/'
+        #fname_pref = YYYYMMDDhhmm+'00-JAXA-L2P_GHRSST-SSTskin-H08_AHI_NRT-'+ \
+        fname_pref = YYYYMMDDhhmm+'00-JAXA-L2P_GHRSST-SSTskin-H08_AHI-'+ \
                     VERd+'-v02.0-fv'+FVER+'.nc'
-        fname_out=box['name']+'_'+YYYYMMDDhhmm+'.nc'
+        fname_out = box['name']+'_'+YYYYMMDDhhmm+'.nc'
         try:
             # get ftp file names
             ftp.cwd(fdir)
@@ -183,12 +187,6 @@ if __name__ == "__main__":
     # output dir
     dpath = '/home/datawork-lops-osi/data/hw/sst/'+box['name']+'/'
     if not os.path.isdir(dpath): os.mkdir(dpath)
-
-    # time line, should b
-    #t1=datetime.datetime(2015,6,15,0,0,0); delt = 30. # in days
-    # first file is in fact: 201507/07/20150707015000-JAX...
-    #t1=datetime.datetime(2015,7,26,0,0,0); delt = 30. # in days
-    #t1=datetime.datetime(2015,9,1,0,0,0); delt = 30.
 
     time = [tstart+datetime.timedelta(minutes=10*n) for n in range(int(delt*24*60/10))]
 
