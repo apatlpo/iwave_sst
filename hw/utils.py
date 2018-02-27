@@ -7,7 +7,7 @@ import xarray as xr
 import dask.array as da
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
-#from cmocean import cm
+from cmocean import cm
 #import time
 #from datetime import datetime
 import ephem
@@ -72,10 +72,11 @@ def process_raw_mask(mask):
 def plot_mask(mask, colorbar=False, title=None, vmin=0., vmax=1., savefig=None, offline=False, angles=None):
     MPL_LOCK = threading.Lock()
     with MPL_LOCK:
+        #
         if offline:
             plt.switch_backend('agg')
-        fig = plt.figure(figsize=(10,10))
-        #ax = plt.axes(projection=ccrs.Geostationary(central_longitude=140.0)) # may cause crash when distributed
+        #
+        fig = plt.figure(figsize=(5,5))
         ax = fig.add_subplot(111, projection=ccrs.Geostationary(central_longitude=140.0))
         mask.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
                              x='longitude', y='latitude', add_colorbar=colorbar);
@@ -94,7 +95,7 @@ def plot_mask(mask, colorbar=False, title=None, vmin=0., vmax=1., savefig=None, 
             ax.set_title(title)
         #
         if savefig is not None:
-            fig.savefig(savefig, dpi=300)
+            fig.savefig(savefig, dpi=150)
             if offline:
                 plt.close(fig)
         #
@@ -256,30 +257,37 @@ def process_mask_time(i, t, f, tagg, chunks, s):
 #------------------------------ SST ---------------------------------------
 
 #
-def plot_sst(sst, colorbar=False, title=None, vmin=10., vmax=35., savefig=None, offline=False):
-    if offline:
-        plt.switch_backend('agg')
-    fig = plt.figure(figsize=(10,10))
-    ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
-    im = sst.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
-                        x='lon', y='lat', add_colorbar=colorbar, cmap=cm.thermal)
-    fig.colorbar(im)
-    gl=ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=2, color='k', alpha=0.5, linestyle='--')
-    gl.xlabels_top=False
-    ax.coastlines(color='k')
-    #
-    if title is None:
-        ax.set_title('HW sst')
-    else:
-        ax.set_title(title)
-    #
-    if savefig is not None:
-        fig.savefig(savefig, dpi=150)
-        time.sleep(.1)
-        plt.close(fig)
-    #
-    if not offline:
-        plt.show()
+def plot_sst(sst, colorbar=False, title=None, vmin=10., vmax=35., savefig=None, offline=False, 
+             coast_resolution='110m'):
+    MPL_LOCK = threading.Lock()
+    with MPL_LOCK:
+        if offline:
+            plt.switch_backend('agg')
+        #
+        fig = plt.figure(figsize=(10,10))
+        ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
+        try:
+            im = sst.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
+                                x='lon', y='lat', add_colorbar=colorbar, cmap=cm.thermal)
+            fig.colorbar(im)
+            gl=ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=2, color='k', 
+                            alpha=0.5, linestyle='--')
+            gl.xlabels_top = False
+            ax.coastlines(resolution=coast_resolution, color='k')
+        except:
+            pass
+        #
+        if title is None:
+            ax.set_title('HW sst')
+        else:
+            ax.set_title(title)
+        #
+        if savefig is not None:
+            fig.savefig(savefig, dpi=150)
+            plt.close(fig)
+        #
+        if not offline:
+            plt.show()
 
 
 #------------------------------ Himwari binary data (band) ---------------------------------------
