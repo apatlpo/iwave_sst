@@ -299,26 +299,37 @@ def uncompress(path,file):
     #os.system('tar -xjvf '+os.path.join(path,file)+' -C '+path)
     
     
-def read_hw_bin(file, t, blon=(105.,125.), blat=(-40.,-10), band='B03'):
+def read_hw_bin(file, t, blon=None, blat=None, band='B03'):
     """ load himawari binary data and place into an xarray
     """
-    # use satpy to read data
-    scn = Scene(sensor="ahi", reader="ahi_hsd", filenames=[file])
-    scn.load([band])
-    # load numpy arrays
-    d = scn['B03'].data
-    lon,lat=scn['B03'].info['area'].get_lonlats()
-    # create a xarray
-    #ds = xr.Dataset({band: (['y','x'], d)}, coords={'longitude': (['y','x'], lon), 'latitude': (['y','x'], lat)})
-    ds = xr.Dataset({band: (['y','x'], d), 'longitude': (['y','x'], lon), 'latitude': (['y','x'], lat)})
-    #ds = ds.where(ds['longitude']<1e4)    
+    if isinstance(file, list) and len(file)>1:
+        # concatenate mutliple segment files
+        ds=[]
+        for f in file:
+            ds.append(read_hw_bin(f, t, band=band))
+        ds = xr.concat(ds, 'y')
+    else:
+        #
+        file = file[0] if isinstance(file, list) else file
+        print('Loads '+file)
+        # use satpy to read data
+        scn = Scene(sensor="ahi", reader="ahi_hsd", filenames=[file])
+        scn.load([band])
+        # load numpy arrays
+        d = scn['B03'].data
+        lon, lat = scn['B03'].info['area'].get_lonlats()
+        # create a xarray
+        ds = xr.Dataset({band: (['y','x'], d), 'longitude': (['y','x'], lon), 'latitude': (['y','x'], lat)})
+        ds = ds.assign_coords(time=t)
+        #ds.set_coords(['longitude','latitude'], inplace=True) # breaks subsampling
     # subsample
-    #print(np.amin(blon))
-    ds = ds.where(ds['longitude']>np.amin(blon), drop=True)
-    ds = ds.where(ds['longitude']<np.amax(blon), drop=True)
-    ds = ds.where(ds['latitude']>np.amin(blat), drop=True)
-    ds = ds.where(ds['latitude']<np.amax(blat), drop=True)
-    return ds, band
+    if blon is not None:
+        ds = ds.where(ds['longitude'].isel(y=0)>np.amin(blon), drop=True)
+        ds = ds.where(ds['longitude'].isel(y=0)<np.amax(blon), drop=True)
+    if blat is not None:
+        ds = ds.where(ds['latitude'].isel(x=0)>np.amin(blat), drop=True)
+        ds = ds.where(ds['latitude'].isel(x=0)<np.amax(blat), drop=True)
+    return ds
     
 
 #
