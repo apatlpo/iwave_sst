@@ -94,8 +94,8 @@ def ftp_login():
 #
 # download data
 #
-def download_hw(times,box=None):
-
+def download_hw(times, rpath, dpath=None, box=None):
+        
     # open ftp
     host, login, passwd = ftp_login()
     ftp = ftplib.FTP(host)
@@ -121,7 +121,8 @@ def download_hw(times,box=None):
         #fname_pref = YYYYMMDDhhmm+'00-JAXA-L2P_GHRSST-SSTskin-H08_AHI_NRT-'+ \
         fname_pref = YYYYMMDDhhmm+'00-JAXA-L2P_GHRSST-SSTskin-H08_AHI-'+ \
                     VERd+'-v02.0-fv'+FVER+'.nc'
-        fname_out = box['name']+'_'+YYYYMMDDhhmm+'.nc'
+        if box is not None:
+            fname_out = box['name']+'_'+YYYYMMDDhhmm+'.nc'
         try:
             # get ftp file names
             ftp.cwd(fdir)
@@ -133,12 +134,12 @@ def download_hw(times,box=None):
             #
             for fname in files:
                 #
-                fileraw = rpath+'raw/'+fname_pref
+                fileraw = rpath+fname_pref
                 sstfiles.append(fileraw)
                 #
                 if not os.path.isfile(fileraw):
                     print('No sst file found, download from jaxa ftp: '+fname)
-                    lfile = open(rpath+'raw/'+fname,'wb')
+                    lfile = open(rpath+fname,'wb')
                     try:
                         ftp.retrbinary('RETR %s' % fname, lfile.write)
                     except:
@@ -178,21 +179,21 @@ def process_raw_data(fileraw,box,fname_out, \
 #
 if __name__ == "__main__":
 
-
     box, tstart, delt = parse_input()
     print('box defined by following coordinates: ',box)
     print('start time: '+str(tstart))
     print('time interval considered: %.1f days'%delt)
     
     # output dir
-    rpath = '/home/datawork-lops-osi/data/hw/sst/'
-    dpath = rpath+box['name']+'/'
+    rpath = '/home/datawork-lops-osi/data/hw/sst/raw/'
+    dpath = '/home/datawork-lops-osi/data/hw/sst/'+box['name']+'/'
+    if not os.path.isdir(rpath): os.mkdir(rpath)
     if not os.path.isdir(dpath): os.mkdir(dpath)
 
     time = [tstart+datetime.timedelta(minutes=10*n) for n in range(int(delt*24*60/10))]
 
-    # download a first file in order to get coordinates
-    sstfiles = download_hw(time[:],box)
+    # download files
+    sstfiles = download_hw(time[:], rpath, dpath=dpath, box=box)
 
 
 

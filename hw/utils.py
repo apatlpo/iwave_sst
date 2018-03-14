@@ -257,8 +257,12 @@ def process_mask_time(i, t, f, tagg, chunks, s):
 #------------------------------ SST ---------------------------------------
 
 #
-def plot_sst(sst, colorbar=False, title=None, vmin=10., vmax=35., savefig=None, offline=False, 
+def plot_sst(sst, colorbar=False, title=None, vmin=None, vmax=None, savefig=None, offline=False, 
              coast_resolution='110m'):
+    if vmin is None:
+        vmin = sst.min()
+    if vmax is None:
+        vmax = sst.max()    
     MPL_LOCK = threading.Lock()
     with MPL_LOCK:
         if offline:
