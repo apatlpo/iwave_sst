@@ -133,12 +133,12 @@ def download_hw(times,box=None):
             #
             for fname in files:
                 #
-                fileraw = dpath+fname_pref
+                fileraw = rpath+'raw/'+fname_pref
                 sstfiles.append(fileraw)
                 #
                 if not os.path.isfile(fileraw):
                     print('No sst file found, download from jaxa ftp: '+fname)
-                    lfile = open(dpath+fname,'wb')
+                    lfile = open(rpath+'raw/'+fname,'wb')
                     try:
                         ftp.retrbinary('RETR %s' % fname, lfile.write)
                     except:
@@ -149,7 +149,7 @@ def download_hw(times,box=None):
                 #
                 if box is not None:
                     try:
-                        process_raw_data(fileraw,box,fname_out)
+                        process_raw_data(fileraw, box, fname_out)
                     except:
                         print('Cannot process '+fileraw)                
         except:
@@ -185,7 +185,8 @@ if __name__ == "__main__":
     print('time interval considered: %.1f days'%delt)
     
     # output dir
-    dpath = '/home/datawork-lops-osi/data/hw/sst/'+box['name']+'/'
+    rpath = '/home/datawork-lops-osi/data/hw/sst/'
+    dpath = rpath+box['name']+'/'
     if not os.path.isdir(dpath): os.mkdir(dpath)
 
     time = [tstart+datetime.timedelta(minutes=10*n) for n in range(int(delt*24*60/10))]
