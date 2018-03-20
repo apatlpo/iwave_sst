@@ -258,7 +258,7 @@ def process_mask_time(i, t, f, tagg, chunks, s):
 
 #
 def plot_sst(sst, colorbar=False, title=None, vmin=None, vmax=None, savefig=None, offline=False, 
-             coast_resolution='110m'):
+             coast_resolution='110m', figsize=(10,10)):
     if vmin is None:
         vmin = sst.min()
     if vmax is None:
@@ -268,7 +268,7 @@ def plot_sst(sst, colorbar=False, title=None, vmin=None, vmax=None, savefig=None
         if offline:
             plt.switch_backend('agg')
         #
-        fig = plt.figure(figsize=(10,10))
+        fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
         try:
             im = sst.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), vmin=vmin, vmax=vmax,
