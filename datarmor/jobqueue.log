@@ -1,0 +1,54 @@
+import socket
+import subprocess
+host = socket.gethostname()
+jlab_port = '8877'
+user = 'aponte'
+hostname = 'datarmor1-10g'
+proc = subprocess.Popen(['jupyter', 'lab', '--ip', host, '--no-browser','--port', jlab_port])
+#print("ssh -N -L 8888:%s:8888 -l aponte aponte@datarmor1-10g" % (host))
+print(f'ssh -N -L {jlab_port}:{host}:{jlab_port}  {user}@{hostname}')
+
+import os
+from dask_jobqueue import PBSCluster
+
+cluster = PBSCluster(queue='mpi_1', local_directory=os.getenv('WORKDIR', '/dask'), interface='ib0', \
+                     threads=4, processes=7, memory='10GB', resource_spec='select=1:ncpus=28:mem=100g')
+
+cluster.start_workers(10)
+
+from dask.distributed import Client
+client = Client(cluster)
+
+
+
+
+
+
+#!/bin/csh
+#PBS -N dask-scheduler
+#PBS -q mpi_1
+#PBS -l select=1:ncpus=28:mpiprocs=7:ompthreads=7:mem=100g
+#PBS -l walltime=24:00:00
+#PBS -j oe
+#PBS -m abe
+
+# Writes ~/dask/scheduler.json file in home directory
+# Connect with
+# >>> from dask.distributed import Client
+# >>> client = Client(scheduler_file='~/dask/scheduler.json')
+
+# Setup Environment
+setenv PATH ${HOME}/.miniconda3/envs/pangeon/bin:${PATH}
+#setenv PATH ${HOME}/.miniconda3/envs/pangeod0160/bin:${PATH}
+#setenv PATH ${HOME}/.miniconda3/envs/pangeod0154b/bin:${PATH}
+
+setenv SCHEDULER ${DATAWORK}/dask/scheduler.json
+#setenv SCHEDULER ${SCRATCH}/dask/scheduler.json
+rm -f ${SCHEDULER}
+mpirun --np 7 dask-mpi --nthreads 4 \
+     --memory-limit 1e10 \
+     --interface ib0 \
+     --local-directory ${DATAWORK}/dask \
+     --scheduler-file=${SCHEDULER}
+
+
