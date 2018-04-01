@@ -16,34 +16,15 @@
 #
 # cd to the directory you submitted your job
 cd $PBS_O_WORKDIR
-qstat -f $PBS_JOBID
-
-#source /usr/share/Modules/3.2.10/init/csh
-#module list
-#cat $PBS_NODEFILE | uniq >  "$PBS_JOBID.nodefile"
 
 setenv PATH ${HOME}/.miniconda3/envs/pangeon/bin:${PATH}
 
 date
-## sleep
-python jlab.py $PBS_JOBID  > "jlab.log"
-sleep 2h
-## or run script
-#set path = ($HOME/.miniconda2/envs/daskdist/bin $path)
-#cp /home1/datahome/aponte/iwave_sst/hw/hw_cloudmask_agglo.py .
-#python hw_cloudmask_agglo.py  >&  "$PBS_JOBID-python.out"
+# launch jupyterlab
+#python jlab.py $PBS_JOBID  > "jlab.log"
+python jlab.py > "jlab.log"
+# and goes to sleep
+sleep 24h
 date
 
-
-# Run jupyter notebook
-# cat *.nodefile
-#
-# ssh -L 9999:localhost:9999  datarmor1-10g
-# ssh -L 9999:localhost:8886 r1i0n0.ib0.ice.ifremer.fr
-# set path = ($HOME/.miniconda2/envs/daskdist/bin $path); jupyter notebook --no-browser --port=8886
-#
-# ps -ax | grep localhost
-#
-# ps -aux | grep aponte
-# netstat -lntu | grep 99
 
