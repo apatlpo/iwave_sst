@@ -5,10 +5,12 @@ Download Miniconda3 (i.e. for python3) from the [conda website](https://conda.io
 bash Miniconda3-latest-Linux-x86_64.sh
 bash
 conda update conda
-conda create -n iwsst -c conda-forge python=3.6 xarray jupyter cartopy utide
+conda create -n iwsst -c conda-forge python=3.6 dask xarray jupyterlab cartopy utide
 source activate iwsst
+pip install git+https://github.com/dask/dask-jobqueue.git
 pip install cmocean
 pip install pyephem
+cd iwave_sst; pip install -e .
 ```
 
 In order to add the environnement to kernels available to jupyter, you need to run:

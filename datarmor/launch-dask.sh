@@ -3,13 +3,10 @@ set -e
 
 # Usage:
 #   bash
-#   source activate pangeo
+#   source activate iwsst
 #   ./launch-dask.sh 4 
 
-source activate pangeon
-#source activate pangeod0161
-#source activate pangeod0160
-#source activate pangeod0154b
+source activate iwsst
 
 # create a directory to store temporary dask data
 #mkdir -p $DATAWORK/dask 

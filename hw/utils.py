@@ -10,7 +10,7 @@ import cartopy.crs as ccrs
 from cmocean import cm
 #import time
 #from datetime import datetime
-import ephem
+#import ephem
 import threading
 #
 try:

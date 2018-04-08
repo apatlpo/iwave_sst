@@ -3,10 +3,10 @@ set -e
 
 # Usage:
 #   bash
-#   source activate pangeo
+#   source activate iwsst
 #   ./launch-jlab.sh 
 
-source activate pangeon
+source activate iwsst
 
 # delete existing jlab log file
 JLAB_LOG='jlab.log'
