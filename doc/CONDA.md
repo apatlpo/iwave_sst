@@ -11,6 +11,7 @@ pip install git+https://github.com/dask/dask-jobqueue.git
 pip install cmocean
 pip install pyephem
 cd iwave_sst; pip install -e .
+python doc/cartopy_download.py physical
 ```
 
 In order to add the environnement to kernels available to jupyter, you need to run:
